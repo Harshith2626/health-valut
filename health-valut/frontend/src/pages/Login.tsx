@@ -25,11 +25,6 @@ export default function Login() {
     }
   }
 
-  function fillDemo(role: "PATIENT" | "DOCTOR") {
-    setEmail(role === "PATIENT" ? "patient@demo.com" : "doctor@demo.com");
-    setPassword(role === "PATIENT" ? "patient123" : "doctor123");
-  }
-
   return (
     <div className="min-h-screen flex bg-vault-bg">
       <div className="hidden lg:flex flex-col justify-between w-1/2 bg-vault-primary text-white p-12 relative overflow-hidden">
@@ -76,15 +71,6 @@ export default function Login() {
               {loading ? "Signing in..." : "Sign in"} <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-
-          <div className="mt-5 flex gap-2 text-xs">
-            <button onClick={() => fillDemo("PATIENT")} className="flex-1 py-2 rounded-lg border border-vault-line text-vault-muted hover:bg-vault-primaryLight hover:text-vault-primary transition-colors">
-              Use demo patient
-            </button>
-            <button onClick={() => fillDemo("DOCTOR")} className="flex-1 py-2 rounded-lg border border-vault-line text-vault-muted hover:bg-vault-primaryLight hover:text-vault-primary transition-colors">
-              Use demo doctor
-            </button>
-          </div>
 
           <p className="text-sm text-vault-muted mt-6 text-center">
             New to Health Valut?{" "}

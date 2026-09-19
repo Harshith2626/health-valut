@@ -1,23 +1,28 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { format, isToday } from "date-fns";
-import { CalendarCheck, Users, ArrowRight } from "lucide-react";
+import { CalendarCheck, Users, ArrowRight, UserCog, Stethoscope, MapPin, Phone, IndianRupee } from "lucide-react";
 import { api } from "../../api/client";
 import { Card, SectionHeading, Spinner, StatusBadge } from "../../components/UI";
 import { Appointment, Doctor } from "../../types";
+import DoctorProfileModal from "../../components/DoctorProfileModal";
 
 export default function DoctorDashboard() {
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
-  useEffect(() => {
-    Promise.all([api.get("/doctors/me"), api.get("/appointments/me")])
+  function loadData() {
+    return Promise.all([api.get("/doctors/me"), api.get("/appointments/me")])
       .then(([d, a]) => {
         setDoctor(d.data.doctor);
         setAppointments(a.data.appointments);
-      })
-      .finally(() => setLoading(false));
+      });
+  }
+
+  useEffect(() => {
+    loadData().finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="flex justify-center py-20"><Spinner className="w-8 h-8" /></div>;
@@ -28,10 +33,59 @@ export default function DoctorDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-xs font-mono uppercase tracking-wider text-vault-primary mb-1">Doctor Dashboard</p>
-        <h1 className="text-2xl font-display font-semibold">Welcome back, Dr. {doctor?.name.split(" ").pop()}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-mono uppercase tracking-wider text-vault-primary mb-1">Doctor Portal</p>
+          <h1 className="text-2xl font-display font-semibold">Welcome back, Dr. {doctor?.name.split(" ").pop()}</h1>
+        </div>
+        <button
+          onClick={() => setShowProfileModal(true)}
+          className="btn-secondary text-sm flex items-center gap-2"
+        >
+          <UserCog className="w-4 h-4 text-vault-primary" /> Edit Practice Profile
+        </button>
       </div>
+
+      {/* Doctor Summary Banner */}
+      <Card className="bg-gradient-to-br from-white to-vault-bg border-vault-line">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="badge bg-vault-primaryLight text-vault-primary font-medium">
+                {doctor?.specialization}
+              </span>
+              {doctor?.qualification && (
+                <span className="text-xs text-vault-muted font-mono">
+                  {doctor.qualification} {doctor.experienceYears ? `· ${doctor.experienceYears} yrs exp` : ""}
+                </span>
+              )}
+            </div>
+            <h2 className="text-xl font-display font-semibold text-vault-ink">{doctor?.name}</h2>
+            {doctor?.biography && (
+              <p className="text-xs text-vault-muted mt-1.5 max-w-2xl leading-relaxed">{doctor.biography}</p>
+            )}
+          </div>
+          <div className="text-left sm:text-right text-xs text-vault-muted space-y-1">
+            {doctor?.clinicName && (
+              <p className="flex items-center sm:justify-end gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-vault-primary" />
+                {[doctor.clinicName, doctor.location].filter(Boolean).join(", ")}
+              </p>
+            )}
+            {doctor?.phone && (
+              <p className="flex items-center sm:justify-end gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-vault-primary" />
+                {doctor.phone}
+              </p>
+            )}
+            {doctor?.consultationFee != null && (
+              <p className="font-semibold text-vault-ink">
+                Consultation Fee: ₹{doctor.consultationFee}
+              </p>
+            )}
+          </div>
+        </div>
+      </Card>
 
       <div className="grid sm:grid-cols-2 gap-4">
         <Card className="flex items-center gap-4">
@@ -86,6 +140,17 @@ export default function DoctorDashboard() {
           </div>
         )}
       </Card>
+
+      {showProfileModal && doctor && (
+        <DoctorProfileModal
+          doctor={doctor}
+          onClose={() => setShowProfileModal(false)}
+          onSaved={(updated) => {
+            setDoctor(updated);
+            setShowProfileModal(false);
+          }}
+        />
+      )}
     </div>
   );
 }

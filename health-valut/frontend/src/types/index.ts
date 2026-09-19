@@ -14,6 +14,9 @@ export interface Patient {
   currentMedications?: string | null;
   emergencyContactName?: string | null;
   emergencyContactPhone?: string | null;
+  emergencyContactRelation?: string | null;
+  height?: number | null; // in cm
+  weight?: number | null; // in kg
   avatarUrl?: string | null;
 }
 
@@ -26,6 +29,7 @@ export interface Doctor {
   experienceYears?: number | null;
   clinicName?: string | null;
   location?: string | null;
+  phone?: string | null;
   biography?: string | null;
   avatarUrl?: string | null;
   consultationFee?: number | null;

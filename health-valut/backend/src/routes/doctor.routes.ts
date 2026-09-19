@@ -43,15 +43,15 @@ router.put("/me", requireAuth, requireRole("DOCTOR"), async (req: AuthRequest, r
 
     const {
       name, specialization, qualification, experienceYears,
-      clinicName, location, biography, avatarUrl, consultationFee,
+      clinicName, location, phone, biography, avatarUrl, consultationFee,
     } = req.body;
 
     const updated = await prisma.doctor.update({
       where: { id: doctor.id },
       data: {
-        name, specialization, qualification, clinicName, location, biography, avatarUrl,
-        experienceYears: experienceYears !== undefined ? Number(experienceYears) : undefined,
-        consultationFee: consultationFee !== undefined ? Number(consultationFee) : undefined,
+        name, specialization, qualification, clinicName, location, phone, biography, avatarUrl,
+        experienceYears: experienceYears === null || experienceYears === "" ? null : (experienceYears !== undefined && !isNaN(Number(experienceYears)) ? Number(experienceYears) : undefined),
+        consultationFee: consultationFee === null || consultationFee === "" ? null : (consultationFee !== undefined && !isNaN(Number(consultationFee)) ? Number(consultationFee) : undefined),
       },
     });
 

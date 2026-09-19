@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { FolderLock, CalendarCheck, Pill, BellRing, ArrowRight, AlertTriangle } from "lucide-react";
+import { FolderLock, CalendarCheck, Pill, BellRing, ArrowRight, AlertTriangle, Activity, Scale, HeartPulse, UserCog, ShieldCheck, Phone } from "lucide-react";
 import { api } from "../../api/client";
 import { Card, SectionHeading, Spinner } from "../../components/UI";
 import { MedicalHistoryEvent, Appointment, Reminder, Patient } from "../../types";
+import { calculateBMI, evaluateHealthStatus } from "../../utils/health";
+import PatientProfileModal from "../../components/PatientProfileModal";
 import { format } from "date-fns";
 
 export default function PatientDashboard() {
@@ -12,9 +14,10 @@ export default function PatientDashboard() {
   const [events, setEvents] = useState<MedicalHistoryEvent[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
-  useEffect(() => {
-    Promise.all([
+  function loadData() {
+    return Promise.all([
       api.get("/patients/me"),
       api.get("/history"),
       api.get("/appointments/me"),
@@ -25,30 +28,126 @@ export default function PatientDashboard() {
         setEvents(h.data.events.slice(0, 4));
         setAppointments(a.data.appointments);
         setReminders(r.data.reminders.filter((rem: Reminder) => !rem.isDone).slice(0, 4));
-      })
-      .finally(() => setLoading(false));
+      });
+  }
+
+  useEffect(() => {
+    loadData().finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="flex justify-center py-20"><Spinner className="w-8 h-8" /></div>;
 
   const upcoming = appointments.filter((a) => ["PENDING", "CONFIRMED"].includes(a.status)).slice(0, 3);
-  const profileGaps = !patient?.bloodGroup || !patient?.emergencyContactPhone;
+  const bmiInfo = calculateBMI(patient?.weight, patient?.height);
+  const healthStatus = evaluateHealthStatus(patient);
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-xs font-mono uppercase tracking-wider text-vault-primary mb-1">Dashboard</p>
-        <h1 className="text-2xl font-display font-semibold">Hi {patient?.name?.split(" ")[0]}, here's where things stand.</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-mono uppercase tracking-wider text-vault-primary mb-1">Health Dashboard</p>
+          <h1 className="text-2xl font-display font-semibold">Hi {patient?.name?.split(" ")[0] || "there"}, here's your health summary.</h1>
+        </div>
+        <button
+          onClick={() => setShowProfileModal(true)}
+          className="btn-secondary text-sm flex items-center gap-2"
+        >
+          <UserCog className="w-4 h-4 text-vault-primary" /> Update Vitals & Profile
+        </button>
       </div>
 
-      {profileGaps && (
-        <Card className="border-vault-gold/40 bg-vault-gold/5 flex items-center gap-3">
-          <AlertTriangle className="w-5 h-5 text-vault-gold shrink-0" />
-          <p className="text-sm">
-            Your health profile is missing key emergency details. <Link to="/patient/vault" className="font-medium underline">Complete it</Link> so doctors can help faster in an emergency.
-          </p>
+      {/* Dynamic Health Status & Vitals Overview Banner */}
+      <div className="grid lg:grid-cols-3 gap-4">
+        {/* Card 1: Dynamic Health Status */}
+        <Card className="lg:col-span-2 flex flex-col justify-between bg-gradient-to-br from-white to-vault-bg border-vault-line">
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <span className="text-xs font-mono uppercase tracking-wider text-vault-primary font-semibold flex items-center gap-1.5">
+                <HeartPulse className="w-4 h-4" /> Dynamic Health Status
+              </span>
+              <span className={`badge ${healthStatus.badgeBg} ${healthStatus.textColor} border ${healthStatus.borderColor} font-semibold text-xs`}>
+                {healthStatus.status}
+              </span>
+            </div>
+            <h3 className="text-lg font-display font-semibold text-vault-ink mb-1.5">{healthStatus.headline}</h3>
+            <p className="text-sm text-vault-muted leading-relaxed mb-4">{healthStatus.summary}</p>
+          </div>
+
+          <div className="pt-3 border-t border-vault-line/80 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-vault-muted">
+            {patient?.bloodGroup && (
+              <span className="flex items-center gap-1.5">
+                <strong className="text-vault-ink">Blood Group:</strong> {patient.bloodGroup}
+              </span>
+            )}
+            {patient?.allergies && patient.allergies.toLowerCase() !== "none" && (
+              <span className="flex items-center gap-1.5 text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                <strong>Allergy:</strong> {patient.allergies}
+              </span>
+            )}
+            {patient?.emergencyContactPhone && (
+              <span className="flex items-center gap-1.5">
+                <Phone className="w-3 h-3 text-vault-primary" />
+                <strong className="text-vault-ink">Emergency:</strong> {patient.emergencyContactName} ({patient.emergencyContactPhone})
+              </span>
+            )}
+          </div>
         </Card>
-      )}
+
+        {/* Card 2: Vitals & Body Mass Index */}
+        <Card className="flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-mono uppercase tracking-wider text-vault-primary font-semibold flex items-center gap-1.5">
+                <Scale className="w-4 h-4" /> Body Metrics & BMI
+              </span>
+              <button
+                onClick={() => setShowProfileModal(true)}
+                className="text-xs text-vault-primary font-medium hover:underline"
+              >
+                Edit
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div className="p-2.5 rounded-xl bg-vault-bg/80 border border-vault-line">
+                <p className="text-[11px] text-vault-muted">Height</p>
+                <p className="text-base font-semibold text-vault-ink">
+                  {patient?.height ? `${patient.height} cm` : "—"}
+                </p>
+              </div>
+              <div className="p-2.5 rounded-xl bg-vault-bg/80 border border-vault-line">
+                <p className="text-[11px] text-vault-muted">Weight</p>
+                <p className="text-base font-semibold text-vault-ink">
+                  {patient?.weight ? `${patient.weight} kg` : "—"}
+                </p>
+              </div>
+            </div>
+
+            {bmiInfo ? (
+              <div className={`p-3 rounded-xl border ${bmiInfo.badgeBg} ${bmiInfo.borderColor} space-y-1`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-vault-ink">Calculated BMI</span>
+                  <span className={`text-xs font-bold ${bmiInfo.textColor}`}>{bmiInfo.bmi}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs font-semibold ${bmiInfo.textColor}`}>{bmiInfo.category}</span>
+                  <span className="text-[10px] text-vault-muted">Ideal: 18.5 – 24.9</span>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl border border-dashed border-vault-line bg-vault-bg/50 text-center">
+                <p className="text-xs text-vault-muted mb-2">Height and weight are required to calculate your BMI.</p>
+                <button
+                  onClick={() => setShowProfileModal(true)}
+                  className="btn-ghost text-xs px-2 py-1"
+                >
+                  + Add height & weight
+                </button>
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <QuickLink to="/patient/vault" icon={FolderLock} label="Health Vault" />
@@ -118,6 +217,17 @@ export default function PatientDashboard() {
           </Card>
         </div>
       </div>
+
+      {showProfileModal && patient && (
+        <PatientProfileModal
+          patient={patient}
+          onClose={() => setShowProfileModal(false)}
+          onSaved={(updated) => {
+            setPatient(updated);
+            setShowProfileModal(false);
+          }}
+        />
+      )}
     </div>
   );
 }

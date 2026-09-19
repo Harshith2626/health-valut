@@ -2,11 +2,14 @@ import { ReactNode, useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, FolderLock, GitBranch, Stethoscope, CalendarCheck,
-  Pill, BellRing, ShieldCheck, Sparkles, LogOut, Bell, Menu, X,
+  Pill, BellRing, ShieldCheck, Sparkles, LogOut, Bell, Menu, X, UserCog, User,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api/client";
-import { AppNotification } from "../types";
+import { AppNotification, Patient, Doctor } from "../types";
+import FloatingAIChat from "./FloatingAIChat";
+import PatientProfileModal from "./PatientProfileModal";
+import DoctorProfileModal from "./DoctorProfileModal";
 
 const patientNav = [
   { to: "/patient", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -27,11 +30,12 @@ const doctorNav = [
 ];
 
 export default function Layout({ children }: { children: ReactNode }) {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   const nav = user?.role === "PATIENT" ? patientNav : doctorNav;
   const unread = notifications.filter((n) => !n.isRead).length;
@@ -88,18 +92,38 @@ export default function Layout({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-vault-line">
-          <div className="flex items-center gap-2 px-2 py-2 mb-1">
-            <div className="w-8 h-8 rounded-full bg-vault-primaryLight flex items-center justify-center text-vault-primary font-semibold text-sm">
-              {user?.profile.name?.[0]?.toUpperCase() || "?"}
+        <div className="p-3 border-t border-vault-line space-y-1">
+          <div className="flex items-center justify-between p-2 rounded-xl bg-vault-bg/60">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-vault-primaryLight flex items-center justify-center text-vault-primary font-semibold text-sm shrink-0">
+                {user?.profile.name?.[0]?.toUpperCase() || "?"}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{user?.profile.name}</p>
+                <p className="text-xs text-vault-muted truncate">{user?.role === "PATIENT" ? "Patient" : "Doctor"}</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{user?.profile.name}</p>
-              <p className="text-xs text-vault-muted truncate">{user?.role === "PATIENT" ? "Patient" : "Doctor"}</p>
-            </div>
+            <button
+              onClick={() => setShowProfileModal(true)}
+              className="text-vault-muted hover:text-vault-primary p-1.5 rounded-lg hover:bg-white transition-colors"
+              title="Edit Profile"
+            >
+              <UserCog className="w-4 h-4" />
+            </button>
           </div>
-          <button onClick={handleLogout} className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm text-vault-muted hover:bg-vault-coralLight hover:text-vault-coral transition-colors">
-            <LogOut className="w-4 h-4" /> Sign out
+
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-vault-ink hover:bg-vault-primaryLight hover:text-vault-primary transition-colors"
+          >
+            <User className="w-3.5 h-3.5" /> Edit Health Profile
+          </button>
+
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-vault-muted hover:bg-vault-coralLight hover:text-vault-coral transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" /> Sign out
           </button>
         </div>
       </aside>
@@ -113,43 +137,79 @@ export default function Layout({ children }: { children: ReactNode }) {
             <Menu className="w-5 h-5" />
           </button>
           <div className="hidden lg:block" />
-          <div className="relative">
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => setShowNotifs((s) => !s)}
-              className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-vault-bg transition-colors"
+              onClick={() => setShowProfileModal(true)}
+              className="flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-lg border border-vault-line hover:bg-vault-bg text-vault-ink transition-colors"
             >
-              <Bell className="w-5 h-5 text-vault-muted" />
-              {unread > 0 && (
-                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-vault-coral" />
-              )}
+              <UserCog className="w-3.5 h-3.5 text-vault-primary" /> Profile Settings
             </button>
-            {showNotifs && (
-              <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto card p-0 z-30">
-                <div className="flex items-center justify-between p-3 border-b border-vault-line">
-                  <p className="text-sm font-semibold">Notifications</p>
-                  {unread > 0 && (
-                    <button onClick={markAllRead} className="text-xs text-vault-primary font-medium">
-                      Mark all read
-                    </button>
+
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifs((s) => !s)}
+                className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-vault-bg transition-colors"
+              >
+                <Bell className="w-5 h-5 text-vault-muted" />
+                {unread > 0 && (
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-vault-coral" />
+                )}
+              </button>
+              {showNotifs && (
+                <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto card p-0 z-30 shadow-xl">
+                  <div className="flex items-center justify-between p-3 border-b border-vault-line">
+                    <p className="text-sm font-semibold">Notifications</p>
+                    {unread > 0 && (
+                      <button onClick={markAllRead} className="text-xs text-vault-primary font-medium">
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+                  {notifications.length === 0 ? (
+                    <p className="text-sm text-vault-muted p-4">No notifications yet.</p>
+                  ) : (
+                    notifications.map((n) => (
+                      <div key={n.id} className={`p-3 border-b border-vault-line last:border-0 ${!n.isRead ? "bg-vault-primaryLight/40" : ""}`}>
+                        <p className="text-sm font-medium">{n.title}</p>
+                        <p className="text-xs text-vault-muted mt-0.5">{n.message}</p>
+                      </div>
+                    ))
                   )}
                 </div>
-                {notifications.length === 0 ? (
-                  <p className="text-sm text-vault-muted p-4">No notifications yet.</p>
-                ) : (
-                  notifications.map((n) => (
-                    <div key={n.id} className={`p-3 border-b border-vault-line last:border-0 ${!n.isRead ? "bg-vault-primaryLight/40" : ""}`}>
-                      <p className="text-sm font-medium">{n.title}</p>
-                      <p className="text-xs text-vault-muted mt-0.5">{n.message}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </header>
 
         <main className="flex-1 p-4 lg:p-8 max-w-6xl w-full mx-auto">{children}</main>
       </div>
+
+      {/* Floating AI Chatbox for Patients */}
+      {user?.role === "PATIENT" && <FloatingAIChat />}
+
+      {/* Profile Modals */}
+      {showProfileModal && user?.role === "PATIENT" && (
+        <PatientProfileModal
+          patient={user.profile as Patient}
+          onClose={() => setShowProfileModal(false)}
+          onSaved={async () => {
+            setShowProfileModal(false);
+            await refreshUser();
+          }}
+        />
+      )}
+
+      {showProfileModal && user?.role === "DOCTOR" && (
+        <DoctorProfileModal
+          doctor={user.profile as Doctor}
+          onClose={() => setShowProfileModal(false)}
+          onSaved={async () => {
+            setShowProfileModal(false);
+            await refreshUser();
+          }}
+        />
+      )}
     </div>
   );
 }
+

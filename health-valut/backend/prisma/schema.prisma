@@ -95,6 +95,9 @@ model Patient {
   currentMedications String?
   emergencyContactName  String?
   emergencyContactPhone String?
+  emergencyContactRelation String?
+  height            Float?   // in cm
+  weight            Float?   // in kg
   avatarUrl         String?
 
   createdAt         DateTime @default(now())
@@ -120,6 +123,7 @@ model Doctor {
   experienceYears Int?
   clinicName     String?
   location       String?
+  phone          String?
   biography      String?
   avatarUrl      String?
   consultationFee Float?

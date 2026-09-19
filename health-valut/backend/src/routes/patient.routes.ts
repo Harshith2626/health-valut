@@ -29,7 +29,8 @@ router.put("/me", requireAuth, requireRole("PATIENT"), async (req: AuthRequest, 
     const {
       name, dateOfBirth, gender, bloodGroup, phone, address,
       allergies, existingConditions, currentMedications,
-      emergencyContactName, emergencyContactPhone, avatarUrl,
+      emergencyContactName, emergencyContactPhone, emergencyContactRelation,
+      height, weight, avatarUrl,
     } = req.body;
 
     const updated = await prisma.patient.update({
@@ -37,8 +38,11 @@ router.put("/me", requireAuth, requireRole("PATIENT"), async (req: AuthRequest, 
       data: {
         name, gender, bloodGroup, phone, address,
         allergies, existingConditions, currentMedications,
-        emergencyContactName, emergencyContactPhone, avatarUrl,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+        emergencyContactName, emergencyContactPhone, emergencyContactRelation,
+        avatarUrl,
+        height: height === null || height === "" ? null : (height !== undefined && !isNaN(Number(height)) ? Number(height) : undefined),
+        weight: weight === null || weight === "" ? null : (weight !== undefined && !isNaN(Number(weight)) ? Number(weight) : undefined),
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : (dateOfBirth === null || dateOfBirth === "" ? null : undefined),
       },
     });
 
@@ -61,15 +65,23 @@ router.get("/me/emergency-overview", requireAuth, requireRole("PATIENT"), async 
       take: 5,
     });
 
+    const bmi = patient.height && patient.weight
+      ? Number((patient.weight / Math.pow(patient.height / 100, 2)).toFixed(1))
+      : null;
+
     res.json({
       overview: {
         name: patient.name,
         bloodGroup: patient.bloodGroup,
+        height: patient.height,
+        weight: patient.weight,
+        bmi,
         allergies: patient.allergies,
         majorConditions: patient.existingConditions,
         currentMedications: patient.currentMedications,
         emergencyContactName: patient.emergencyContactName,
         emergencyContactPhone: patient.emergencyContactPhone,
+        emergencyContactRelation: patient.emergencyContactRelation,
         recentEvents: recentHistory,
       },
     });

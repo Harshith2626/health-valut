@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { api, fileUrl } from "../../api/client";
 import { Card, SectionHeading, EmptyState, Spinner } from "../../components/UI";
 import { MedicalRecord, RecordType, Patient } from "../../types";
+import PatientProfileModal from "../../components/PatientProfileModal";
 
 const RECORD_TYPES: { value: RecordType; label: string }[] = [
   { value: "LAB_REPORT", label: "Lab Report" },
@@ -59,7 +60,7 @@ export default function Vault() {
         </div>
         <div className="flex gap-2">
           <button onClick={() => setShowProfile(true)} className="btn-secondary flex items-center gap-2 text-sm">
-            <User className="w-4 h-4" /> Health Profile
+            <User className="w-4 h-4 text-vault-primary" /> Health Profile & Vitals
           </button>
           <button onClick={() => setShowUpload(true)} className="btn-primary flex items-center gap-2 text-sm">
             <Upload className="w-4 h-4" /> Upload Record
@@ -107,7 +108,14 @@ export default function Vault() {
 
       {showUpload && <UploadModal onClose={() => setShowUpload(false)} onUploaded={() => { setShowUpload(false); load(); }} />}
       {showProfile && patient && (
-        <ProfileModal patient={patient} onClose={() => setShowProfile(false)} onSaved={(p) => { setPatient(p); setShowProfile(false); }} />
+        <PatientProfileModal
+          patient={patient}
+          onClose={() => setShowProfile(false)}
+          onSaved={(p) => {
+            setPatient(p);
+            setShowProfile(false);
+          }}
+        />
       )}
     </div>
   );

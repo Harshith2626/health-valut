@@ -110,3 +110,38 @@ Do not invent a numeric "health score". This is an assistive summary, not a diag
     };
   }
 }
+
+export async function aiDoctorClinicalSummary(patientData: string) {
+  const system = `You are an expert Clinical AI Medical Assistant providing a concise, high-yield clinical briefing for a licensed physician reviewing an authorized patient.
+Structure the clinical briefing clearly into the following markdown sections:
+1. **Patient Snapshot & Baseline**: Age/DOB, Gender, Blood Group, Height, Weight, BMI & Category, Emergency Contact.
+2. **Active Conditions & Allergies**: Highlight critical allergies prominently with alert formatting (e.g. ⚠️ PENICILLIN).
+3. **Current Medications & Regimens**: Active prescriptions and dosages.
+4. **Recent Clinical Events & Diagnostic Findings**: Summary of recent history, lab results, scans, or hospital visits in chronological context.
+5. **Key Clinical Observations & Follow-Up Focus**: Pertinent flags, possible medication interactions or monitoring needs, and recommended discussion points for the upcoming consultation.
+
+Keep the tone professional, objective, and clinically precise. Note that this summary is assistive and the original medical records remain authoritative.`;
+
+  try {
+    return { summary: await callClaude(system, patientData), demo: false };
+  } catch {
+    return {
+      summary:
+        "[Demo Mode — set ANTHROPIC_API_KEY on the backend for live AI responses]\n\n" +
+        "### 📋 Clinical Overview (Demo Summary)\n\n" +
+        "**1. Patient Snapshot & Baseline**\n" +
+        "• Demographics and vitals summarized from authorized profile.\n" +
+        "• BMI and vital parameters are evaluated against standard clinical ranges.\n\n" +
+        "**2. Active Conditions & Critical Alerts**\n" +
+        "• ⚠️ Allergies & existing conditions are highlighted for quick review during consultation.\n\n" +
+        "**3. Current Medications**\n" +
+        "• Consolidated list of active prescriptions and dosages.\n\n" +
+        "**4. Diagnostic & Timeline Highlights**\n" +
+        "• Synthesizes recent lab reports, scans, and past consultation history into chronological trends.\n\n" +
+        "**5. Clinical Focus Points**\n" +
+        "• Actionable follow-ups and routine monitoring reminders.",
+      demo: true,
+    };
+  }
+}
+
