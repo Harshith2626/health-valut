@@ -87,7 +87,9 @@ export function evaluateHealthStatus(patient?: Patient | null): HealthStatusResu
     };
   }
 
-  const bmiInfo = calculateBMI(patient.weight, patient.height);
+  const rawHeight = patient.height ?? patient.heightCm;
+  const rawWeight = patient.weight ?? patient.weightKg;
+  const bmiInfo = calculateBMI(rawWeight, rawHeight);
   const hasConditions = Boolean(patient.existingConditions && patient.existingConditions.trim() && patient.existingConditions.toLowerCase() !== "none");
   const hasAllergies = Boolean(patient.allergies && patient.allergies.trim() && patient.allergies.toLowerCase() !== "none");
   const hasMeds = Boolean(patient.currentMedications && patient.currentMedications.trim() && patient.currentMedications.toLowerCase() !== "none");
@@ -131,7 +133,7 @@ export function evaluateHealthStatus(patient?: Patient | null): HealthStatusResu
 
   score = Math.max(20, Math.min(100, score));
 
-  if (!patient.height || !patient.weight || !hasBlood || !hasEmergency) {
+  if (!rawHeight || !rawWeight || !hasBlood || !hasEmergency) {
     return {
       status: "Profile Gaps",
       level: "incomplete",

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { FolderLock, CalendarCheck, Pill, BellRing, ArrowRight, AlertTriangle, Activity, Scale, HeartPulse, UserCog, ShieldCheck, Phone } from "lucide-react";
 import { api } from "../../api/client";
+import { useAuth } from "../../context/AuthContext";
 import { Card, SectionHeading, Spinner } from "../../components/UI";
 import { MedicalHistoryEvent, Appointment, Reminder, Patient } from "../../types";
 import { calculateBMI, evaluateHealthStatus } from "../../utils/health";
@@ -9,6 +10,7 @@ import PatientProfileModal from "../../components/PatientProfileModal";
 import { format } from "date-fns";
 
 export default function PatientDashboard() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [events, setEvents] = useState<MedicalHistoryEvent[]>([]);
@@ -24,7 +26,16 @@ export default function PatientDashboard() {
       api.get("/reminders"),
     ])
       .then(([p, h, a, r]) => {
-        setPatient(p.data.patient);
+        const rawP = p.data.patient;
+        if (rawP) {
+          const h = rawP.height ?? rawP.heightCm;
+          const w = rawP.weight ?? rawP.weightKg;
+          rawP.height = h;
+          rawP.heightCm = h;
+          rawP.weight = w;
+          rawP.weightKg = w;
+        }
+        setPatient(rawP);
         setEvents(h.data.events.slice(0, 4));
         setAppointments(a.data.appointments);
         setReminders(r.data.reminders.filter((rem: Reminder) => !rem.isDone).slice(0, 4));
@@ -35,10 +46,30 @@ export default function PatientDashboard() {
     loadData().finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (user?.role === "PATIENT" && user.profile) {
+      const pProfile = user.profile as Patient;
+      setPatient((prev) => {
+        const h = pProfile.height ?? pProfile.heightCm ?? prev?.height ?? prev?.heightCm;
+        const w = pProfile.weight ?? pProfile.weightKg ?? prev?.weight ?? prev?.weightKg;
+        return {
+          ...(prev || {}),
+          ...pProfile,
+          height: h,
+          heightCm: h,
+          weight: w,
+          weightKg: w,
+        } as Patient;
+      });
+    }
+  }, [user]);
+
   if (loading) return <div className="flex justify-center py-20"><Spinner className="w-8 h-8" /></div>;
 
+  const currentHeight = patient?.height ?? patient?.heightCm;
+  const currentWeight = patient?.weight ?? patient?.weightKg;
   const upcoming = appointments.filter((a) => ["PENDING", "CONFIRMED"].includes(a.status)).slice(0, 3);
-  const bmiInfo = calculateBMI(patient?.weight, patient?.height);
+  const bmiInfo = calculateBMI(currentWeight, currentHeight);
   const healthStatus = evaluateHealthStatus(patient);
 
   return (
@@ -112,13 +143,13 @@ export default function PatientDashboard() {
               <div className="p-2.5 rounded-xl bg-vault-bg/80 border border-vault-line">
                 <p className="text-[11px] text-vault-muted">Height</p>
                 <p className="text-base font-semibold text-vault-ink">
-                  {patient?.height ? `${patient.height} cm` : "—"}
+                  {currentHeight ? `${currentHeight} cm` : "—"}
                 </p>
               </div>
               <div className="p-2.5 rounded-xl bg-vault-bg/80 border border-vault-line">
                 <p className="text-[11px] text-vault-muted">Weight</p>
                 <p className="text-base font-semibold text-vault-ink">
-                  {patient?.weight ? `${patient.weight} kg` : "—"}
+                  {currentWeight ? `${currentWeight} kg` : "—"}
                 </p>
               </div>
             </div>

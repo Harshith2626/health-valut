@@ -62,7 +62,9 @@ export default function PatientOverview() {
 
   const { patient, history, records, prescriptions } = data;
   const age = patient.dateOfBirth ? differenceInYears(new Date(), new Date(patient.dateOfBirth)) : null;
-  const bmiInfo = calculateBMI(patient.weight, patient.height);
+  const rawHeight = patient.height ?? patient.heightCm;
+  const rawWeight = patient.weight ?? patient.weightKg;
+  const bmiInfo = calculateBMI(rawWeight, rawHeight);
   const healthStatus = evaluateHealthStatus(patient);
 
   return (
@@ -120,7 +122,7 @@ export default function PatientOverview() {
               <Scale className="w-3 h-3 text-vault-primary" /> Body Vitals
             </p>
             <p className="text-xs font-semibold text-vault-ink mt-0.5">
-              {patient.height ? `${patient.height} cm` : "—"} / {patient.weight ? `${patient.weight} kg` : "—"}
+              {rawHeight ? `${rawHeight} cm` : "—"} / {rawWeight ? `${rawWeight} kg` : "—"}
             </p>
           </div>
 

@@ -7,6 +7,21 @@ import { logAudit } from "../utils/audit";
 
 const router = Router();
 
+function formatProfile(user: any) {
+  if (user.patient) {
+    const h = user.patient.height ?? user.patient.heightCm;
+    const w = user.patient.weight ?? user.patient.weightKg;
+    return {
+      ...user.patient,
+      height: h,
+      heightCm: h,
+      weight: w,
+      weightKg: w,
+    };
+  }
+  return user.doctor || null;
+}
+
 // POST /api/auth/register  { role: "PATIENT"|"DOCTOR", email, password, name, ...roleFields }
 router.post("/register", async (req, res, next) => {
   try {
@@ -67,7 +82,7 @@ router.post("/register", async (req, res, next) => {
 
     res.status(201).json({
       token,
-      user: { id: user.id, email: user.email, role: user.role, profile: user.patient || user.doctor },
+      user: { id: user.id, email: user.email, role: user.role, profile: formatProfile(user) },
     });
   } catch (err) {
     next(err);
@@ -96,7 +111,7 @@ router.post("/login", async (req, res, next) => {
 
     res.json({
       token,
-      user: { id: user.id, email: user.email, role: user.role, profile: user.patient || user.doctor },
+      user: { id: user.id, email: user.email, role: user.role, profile: formatProfile(user) },
     });
   } catch (err) {
     next(err);
@@ -112,7 +127,7 @@ router.get("/me", requireAuth, async (req: AuthRequest, res, next) => {
     });
     if (!user) return res.status(404).json({ error: "User not found" });
     res.json({
-      user: { id: user.id, email: user.email, role: user.role, profile: user.patient || user.doctor },
+      user: { id: user.id, email: user.email, role: user.role, profile: formatProfile(user) },
     });
   } catch (err) {
     next(err);

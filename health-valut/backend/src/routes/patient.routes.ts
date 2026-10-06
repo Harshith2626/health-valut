@@ -14,7 +14,17 @@ router.get("/me", requireAuth, requireRole("PATIENT"), async (req: AuthRequest, 
   try {
     const patient = await getOwnPatient(req.user!.userId);
     if (!patient) return res.status(404).json({ error: "Patient profile not found" });
-    res.json({ patient });
+    const h = (patient as any).height ?? (patient as any).heightCm;
+    const w = (patient as any).weight ?? (patient as any).weightKg;
+    res.json({
+      patient: {
+        ...patient,
+        height: h,
+        heightCm: h,
+        weight: w,
+        weightKg: w,
+      },
+    });
   } catch (err) {
     next(err);
   }
@@ -30,8 +40,11 @@ router.put("/me", requireAuth, requireRole("PATIENT"), async (req: AuthRequest, 
       name, dateOfBirth, gender, bloodGroup, phone, address,
       allergies, existingConditions, currentMedications,
       emergencyContactName, emergencyContactPhone, emergencyContactRelation,
-      height, weight, avatarUrl,
+      avatarUrl,
     } = req.body;
+
+    const effectiveHeight = req.body.height !== undefined ? req.body.height : req.body.heightCm;
+    const effectiveWeight = req.body.weight !== undefined ? req.body.weight : req.body.weightKg;
 
     const updated = await prisma.patient.update({
       where: { id: patient.id },
@@ -40,14 +53,24 @@ router.put("/me", requireAuth, requireRole("PATIENT"), async (req: AuthRequest, 
         allergies, existingConditions, currentMedications,
         emergencyContactName, emergencyContactPhone, emergencyContactRelation,
         avatarUrl,
-        height: height === null || height === "" ? null : (height !== undefined && !isNaN(Number(height)) ? Number(height) : undefined),
-        weight: weight === null || weight === "" ? null : (weight !== undefined && !isNaN(Number(weight)) ? Number(weight) : undefined),
+        height: effectiveHeight === null || effectiveHeight === "" ? null : (effectiveHeight !== undefined && !isNaN(Number(effectiveHeight)) ? Number(effectiveHeight) : undefined),
+        weight: effectiveWeight === null || effectiveWeight === "" ? null : (effectiveWeight !== undefined && !isNaN(Number(effectiveWeight)) ? Number(effectiveWeight) : undefined),
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : (dateOfBirth === null || dateOfBirth === "" ? null : undefined),
       },
     });
 
     await logAudit(req.user!.userId, "PATIENT_PROFILE_UPDATED");
-    res.json({ patient: updated });
+    const h = (updated as any).height ?? (updated as any).heightCm;
+    const w = (updated as any).weight ?? (updated as any).weightKg;
+    res.json({
+      patient: {
+        ...updated,
+        height: h,
+        heightCm: h,
+        weight: w,
+        weightKg: w,
+      },
+    });
   } catch (err) {
     next(err);
   }

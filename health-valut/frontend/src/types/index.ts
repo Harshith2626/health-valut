@@ -17,6 +17,8 @@ export interface Patient {
   emergencyContactRelation?: string | null;
   height?: number | null; // in cm
   weight?: number | null; // in kg
+  heightCm?: number | null;
+  weightKg?: number | null;
   avatarUrl?: string | null;
 }
 

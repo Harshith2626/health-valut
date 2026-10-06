@@ -13,6 +13,25 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+function normalizeUser(rawUser: any): AuthUser | null {
+  if (!rawUser) return null;
+  if (rawUser.role === "PATIENT" && rawUser.profile) {
+    const h = rawUser.profile.height ?? rawUser.profile.heightCm;
+    const w = rawUser.profile.weight ?? rawUser.profile.weightKg;
+    return {
+      ...rawUser,
+      profile: {
+        ...rawUser.profile,
+        height: h,
+        heightCm: h,
+        weight: w,
+        weightKg: w,
+      },
+    };
+  }
+  return rawUser;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -21,12 +40,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = localStorage.getItem("hv_token");
     const cached = localStorage.getItem("hv_user");
     if (token && cached) {
-      setUser(JSON.parse(cached));
+      setUser(normalizeUser(JSON.parse(cached)));
       api
         .get("/auth/me")
         .then((res) => {
-          setUser(res.data.user);
-          localStorage.setItem("hv_user", JSON.stringify(res.data.user));
+          const norm = normalizeUser(res.data.user);
+          setUser(norm);
+          localStorage.setItem("hv_user", JSON.stringify(norm));
         })
         .catch(() => {
           localStorage.removeItem("hv_token");
@@ -41,18 +61,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function login(email: string, password: string) {
     const res = await api.post("/auth/login", { email, password });
+    const norm = normalizeUser(res.data.user)!;
     localStorage.setItem("hv_token", res.data.token);
-    localStorage.setItem("hv_user", JSON.stringify(res.data.user));
-    setUser(res.data.user);
-    return res.data.user as AuthUser;
+    localStorage.setItem("hv_user", JSON.stringify(norm));
+    setUser(norm);
+    return norm;
   }
 
   async function register(data: Record<string, any>) {
     const res = await api.post("/auth/register", data);
+    const norm = normalizeUser(res.data.user)!;
     localStorage.setItem("hv_token", res.data.token);
-    localStorage.setItem("hv_user", JSON.stringify(res.data.user));
-    setUser(res.data.user);
-    return res.data.user as AuthUser;
+    localStorage.setItem("hv_user", JSON.stringify(norm));
+    setUser(norm);
+    return norm;
   }
 
   function logout() {
@@ -63,8 +85,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function refreshUser() {
     const res = await api.get("/auth/me");
-    setUser(res.data.user);
-    localStorage.setItem("hv_user", JSON.stringify(res.data.user));
+    const norm = normalizeUser(res.data.user);
+    setUser(norm);
+    localStorage.setItem("hv_user", JSON.stringify(norm));
   }
 
   return (

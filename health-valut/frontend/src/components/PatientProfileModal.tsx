@@ -13,6 +13,9 @@ interface Props {
 
 export default function PatientProfileModal({ patient, onClose, onSaved }: Props) {
   const { refreshUser } = useAuth();
+  const initHeight = patient?.height ?? patient?.heightCm;
+  const initWeight = patient?.weight ?? patient?.weightKg;
+
   const [form, setForm] = useState({
     name: patient?.name || "",
     gender: patient?.gender || "",
@@ -20,8 +23,8 @@ export default function PatientProfileModal({ patient, onClose, onSaved }: Props
     dateOfBirth: patient?.dateOfBirth ? patient.dateOfBirth.slice(0, 10) : "",
     phone: patient?.phone || "",
     address: patient?.address || "",
-    height: patient?.height != null ? String(patient.height) : "",
-    weight: patient?.weight != null ? String(patient.weight) : "",
+    height: initHeight != null ? String(initHeight) : "",
+    weight: initWeight != null ? String(initWeight) : "",
     allergies: patient?.allergies || "",
     existingConditions: patient?.existingConditions || "",
     currentMedications: patient?.currentMedications || "",
@@ -42,15 +45,28 @@ export default function PatientProfileModal({ patient, onClose, onSaved }: Props
     setSaving(true);
     setError("");
     try {
+      const parsedHeight = form.height && !isNaN(parseFloat(form.height)) ? parseFloat(form.height) : null;
+      const parsedWeight = form.weight && !isNaN(parseFloat(form.weight)) ? parseFloat(form.weight) : null;
+
       const payload = {
         ...form,
-        height: form.height && !isNaN(parseFloat(form.height)) ? parseFloat(form.height) : null,
-        weight: form.weight && !isNaN(parseFloat(form.weight)) ? parseFloat(form.weight) : null,
+        height: parsedHeight,
+        heightCm: parsedHeight,
+        weight: parsedWeight,
+        weightKg: parsedWeight,
         dateOfBirth: form.dateOfBirth ? form.dateOfBirth : null,
       };
       const res = await api.put("/patients/me", payload);
       await refreshUser();
-      onSaved(res.data.patient);
+      const updated = res.data.patient;
+      const normalized: Patient = {
+        ...updated,
+        height: updated.height ?? updated.heightCm ?? parsedHeight,
+        heightCm: updated.heightCm ?? updated.height ?? parsedHeight,
+        weight: updated.weight ?? updated.weightKg ?? parsedWeight,
+        weightKg: updated.weightKg ?? updated.weight ?? parsedWeight,
+      };
+      onSaved(normalized);
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to update profile. Please check the values.");
     } finally {
